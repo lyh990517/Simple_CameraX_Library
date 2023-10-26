@@ -1,33 +1,22 @@
 package com.example.camerax
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.hardware.camera2.CameraMetadata.FLASH_MODE_OFF
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCapture.FLASH_MODE_ON
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -47,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -73,7 +63,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
 
-                    FlashControlApp(uiState.collectAsState(),this){
+                    FlashControlApp(uiState.collectAsState()){
                         uiState.value = it
                     }
                 }
@@ -85,7 +75,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FlashControlApp(
     cameraState: State<CameraState>,
-    lifecycleOwner: LifecycleOwner,
     setState: (CameraState) -> Unit
 ) {
     when (cameraState.value) {
@@ -94,33 +83,35 @@ fun FlashControlApp(
         }
 
         is CameraState.Success -> {
-            CameraScreen(lifecycleOwner)
+            CameraScreen()
         }
     }
 }
 
 @Composable
-private fun CameraScreen(lifecycleOwner: LifecycleOwner) {
+private fun CameraScreen() {
     val flashOn = remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
     val cameraControl = remember { mutableStateOf<CameraControl?>(null) }
     val cameraProvider by rememberUpdatedState(ProcessCameraProvider.getInstance(LocalContext.current))
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val preview = remember { mutableStateOf<androidx.camera.core.Preview?>(null) }
     val previewView by remember { mutableStateOf(PreviewView(context)) }
-    val cameraSelector = remember { mutableStateOf(CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build()) }
+    val cameraFacing = remember { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
+    val cameraSelector = CameraSelector.Builder().requireLensFacing(cameraFacing.value).build()
     val provider = cameraProvider.get()
-    DisposableEffect(Unit) {
+    DisposableEffect(cameraFacing.value) {
         cameraProvider.addListener(Runnable {
             coroutineScope.launch(Dispatchers.Main) {
-                preview.value = androidx.camera.core.Preview.Builder()
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-                val camera =
-                    provider.bindToLifecycle(lifecycleOwner, cameraSelector.value, preview.value)
-                cameraControl.value = camera.cameraControl
+                createCameraPreview(
+                    lifecycleOwner = lifecycleOwner,
+                    preview = preview,
+                    previewView = previewView,
+                    cameraSelector =  cameraSelector,
+                    cameraProvider = provider,
+                    cameraControl = cameraControl
+                )
             }
         }, Executors.newSingleThreadExecutor())
 
@@ -135,16 +126,51 @@ private fun CameraScreen(lifecycleOwner: LifecycleOwner) {
                 .align(Alignment.BottomStart)
                 .padding(10.dp),
             onClick = {
-                coroutineScope.launch(Dispatchers.Default) {
-                    cameraControl.value?.enableTorch(flashOn.value)
-                    flashOn.value = !flashOn.value
-                }
+                flashOn.value = !flashOn.value
+                cameraControl.value?.enableTorch(flashOn.value)
             }
         ) {
             Text(if (flashOn.value) "Turn OFF" else "Turn ON")
         }
-
+        Button(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(10.dp),
+            onClick = {
+                    if (cameraFacing.value == CameraSelector.LENS_FACING_BACK) {
+                        flashOn.value = false
+                        cameraFacing.value = CameraSelector.LENS_FACING_FRONT
+                    } else {
+                        cameraFacing.value = CameraSelector.LENS_FACING_BACK
+                    }
+            }
+        ) {
+            Text(if (cameraFacing.value == CameraSelector.LENS_FACING_FRONT) "back" else "front")
+        }
     }
+}
+
+private fun createCameraPreview(
+    lifecycleOwner: LifecycleOwner,
+    preview: MutableState<androidx.camera.core.Preview?>,
+    previewView: PreviewView,
+    cameraSelector: CameraSelector,
+    cameraProvider: ProcessCameraProvider,
+    cameraControl: MutableState<CameraControl?>
+) {
+    cameraProvider.unbindAll()
+
+    preview.value = androidx.camera.core.Preview.Builder()
+        .build()
+        .also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
+        }
+    val camera = cameraProvider.bindToLifecycle(
+        lifecycleOwner,
+        cameraSelector,
+        preview.value
+    )
+    cameraControl.value = camera.cameraControl
 }
 
 @Composable

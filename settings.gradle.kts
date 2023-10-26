@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "cameraX"
 include(":app")
+include(":compose-camerax")

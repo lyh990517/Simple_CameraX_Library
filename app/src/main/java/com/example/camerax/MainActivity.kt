@@ -17,7 +17,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -38,6 +37,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.camerax.ui.theme.CameraXTheme
+import com.example.compose_camerax.CameraX
+import com.example.compose_camerax.CameraXImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,11 +81,9 @@ fun FlashControlApp(
             }
 
             is CameraState.Success -> {
-                CameraScreen { message, label, duration ->
+                CameraScreen { message ->
                     CoroutineScope(Dispatchers.Default).launch {
-                        snackBarHostState.showSnackbar(
-                            message, label, duration = duration
-                        )
+                        snackBarHostState.showSnackbar(message)
                     }
                 }
             }
@@ -93,14 +92,14 @@ fun FlashControlApp(
 }
 
 @Composable
-private fun CameraScreen(showSnackBar: (String, String, SnackbarDuration) -> Unit) {
+private fun CameraScreen(showSnackBar: (String) -> Unit) {
     val flashOn = remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val cameraX by remember { mutableStateOf(CameraXImpl()) }
+    val cameraX by remember { mutableStateOf<CameraX>(CameraXImpl()) }
     val previewView = remember { mutableStateOf<PreviewView?>(null) }
-    val facing = cameraX.facing.collectAsState()
+    val facing = cameraX.getFacingState().collectAsState()
     LaunchedEffect(Unit) {
         cameraX.initialize(context = context)
         previewView.value = cameraX.getPreviewView()
@@ -143,7 +142,7 @@ private fun CameraScreen(showSnackBar: (String, String, SnackbarDuration) -> Uni
                 .align(Alignment.BottomEnd)
                 .padding(10.dp),
             onClick = {
-                cameraX.takePicture(cameraScope, showSnackBar)
+                cameraX.takePicture(showSnackBar)
             }
         ) {
             Text("takePicture")

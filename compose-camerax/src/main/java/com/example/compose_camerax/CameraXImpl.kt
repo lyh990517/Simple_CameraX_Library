@@ -1,4 +1,4 @@
-package com.example.camerax
+package com.example.compose_camerax
 
 import android.content.Context
 import android.os.Environment
@@ -9,7 +9,6 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.material3.SnackbarDuration
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
@@ -17,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
@@ -28,10 +28,7 @@ import java.util.concurrent.Executors
 class CameraXImpl : CameraX {
 
     private val _facing = MutableStateFlow(CameraSelector.LENS_FACING_BACK)
-    val facing = _facing.asStateFlow()
-
     private val _flash = MutableStateFlow(false)
-    val flash = _flash.asStateFlow()
 
     private lateinit var previewView: PreviewView
     private lateinit var preview: Preview
@@ -70,8 +67,7 @@ class CameraXImpl : CameraX {
     }
 
     override fun takePicture(
-        cameraScope: CoroutineScope,
-        showSnackBar: (String, String, SnackbarDuration) -> Unit
+        showMessage: (String) -> Unit
     ) {
         val path =
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + "/cameraX")
@@ -82,7 +78,7 @@ class CameraXImpl : CameraX {
             ).format(System.currentTimeMillis()) + ".jpg"
         )
         val outputFileOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-        cameraScope.launch(Dispatchers.Default + SupervisorJob()) {
+        CoroutineScope(Dispatchers.Default + SupervisorJob()).launch() {
             imageCapture.takePicture(outputFileOptions,
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageSavedCallback {
@@ -91,10 +87,8 @@ class CameraXImpl : CameraX {
                     }
 
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                        showSnackBar(
-                            "Capture Success!! Image Saved at  \n [${Environment.getExternalStorageDirectory().absolutePath}/${Environment.DIRECTORY_PICTURES}/cameraX]",
-                            "close",
-                            SnackbarDuration.Short
+                        showMessage(
+                            "Capture Success!! Image Saved at  \n [${Environment.getExternalStorageDirectory().absolutePath}/${Environment.DIRECTORY_PICTURES}/cameraX]"
                         )
                     }
                 })
@@ -120,5 +114,7 @@ class CameraXImpl : CameraX {
     }
 
     override fun getPreviewView(): PreviewView = previewView
+    override fun getFlashState(): StateFlow<Boolean> = _flash.asStateFlow()
+    override fun getFacingState(): StateFlow<Int> = _facing.asStateFlow()
 
 }

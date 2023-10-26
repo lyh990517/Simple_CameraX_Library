@@ -27,8 +27,11 @@ import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
@@ -41,6 +44,8 @@ class CameraXImpl : CameraX {
 
     private val _facing = MutableStateFlow(CameraSelector.LENS_FACING_BACK)
     private val _flash = MutableStateFlow(false)
+    private val _recordingState = MutableStateFlow<RecordingState>(RecordingState.Idle)
+    private val _recordingInfo = MutableSharedFlow<RecordingInfo>()
 
     private lateinit var previewView: PreviewView
     private lateinit var preview: Preview
@@ -124,7 +129,7 @@ class CameraXImpl : CameraX {
             ).format(System.currentTimeMillis()) + ".jpg"
         )
         val outputFileOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-        CoroutineScope(Dispatchers.Default + SupervisorJob()).launch() {
+        CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
             imageCapture.takePicture(outputFileOptions,
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageSavedCallback {
@@ -144,29 +149,46 @@ class CameraXImpl : CameraX {
 
     override fun startRecordVideo() {
      Log.e("record", "start")
-        recording = videoCapture.output
-            .prepareRecording(context, mediaStoreOutput)
-            .withAudioEnabled()
-            .start(ContextCompat.getMainExecutor(context)){
-
-            }
+        try {
+            recording = videoCapture.output
+                .prepareRecording(context, mediaStoreOutput)
+                .withAudioEnabled()
+                .start(ContextCompat.getMainExecutor(context)){
+                    CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
+                        with(it.recordingStats){
+                            _recordingInfo.emit(RecordingInfo(
+                                duration = recordedDurationNanos,
+                                sizeByte = numBytesRecorded,
+                                audioAmplitude = audioStats.audioAmplitude
+                            ))
+                        }
+                    }
+                }
+            _recordingState.value = RecordingState.OnRecord
+        }catch (e : Exception){
+            e.printStackTrace()
+        }
     }
 
     override fun stopRecordVideo() {
         recording.stop()
+        _recordingState.value = RecordingState.Idle
     }
 
     override fun resumeRecordVideo() {
         recording.resume()
+        _recordingState.value = RecordingState.OnRecord
     }
 
     override fun pauseRecordVideo() {
         recording.pause()
+        _recordingState.value = RecordingState.Paused
     }
 
     override fun closeRecordVideo() {
         Log.e("record","close")
         recording.close()
+        _recordingState.value = RecordingState.Idle
     }
 
     override fun flipCameraFacing() {
@@ -190,5 +212,7 @@ class CameraXImpl : CameraX {
     override fun getPreviewView(): PreviewView = previewView
     override fun getFlashState(): StateFlow<Boolean> = _flash.asStateFlow()
     override fun getFacingState(): StateFlow<Int> = _facing.asStateFlow()
+    override fun getRecordingState(): StateFlow<RecordingState> = _recordingState.asStateFlow()
+    override fun getRecordingInfo(): SharedFlow<RecordingInfo> = _recordingInfo.asSharedFlow()
 
 }

@@ -10,7 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -116,37 +118,72 @@ private fun CameraScreen(showSnackBar: (String) -> Unit) {
         previewView.value?.let { preview ->
             AndroidView(modifier = Modifier.fillMaxSize(), factory = { preview }) {}
         }
-        Button(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(10.dp),
-            onClick = {
-                cameraX.turnOnOffFlash()
-            }
+        Row(
+            Modifier.align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Text(if (flashOn.value) "Turn OFF" else "Turn ON")
+            Button(
+                modifier = Modifier
+                    .padding(10.dp),
+                onClick = {
+                    cameraX.startRecordVideo()
+                }
+            ) {
+                Text("record")
+            }
+            Button(
+                modifier = Modifier
+                    .padding(10.dp),
+                onClick = {
+                    cameraX.resumeRecordVideo()
+                }
+            ) {
+                Text("resume")
+            }
+            Button(
+                modifier = Modifier
+                    .padding(10.dp),
+                onClick = {
+                    cameraX.closeRecordVideo()
+                }
+            ) {
+                Text("close")
+            }
         }
-        Button(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(10.dp),
-            onClick = {
-                cameraX.flipCameraFacing()
-            }
+        Row(
+            Modifier.align(Alignment.BottomCenter),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Text(if (facing.value == CameraSelector.LENS_FACING_FRONT) "back" else "front")
+            Button(
+                modifier = Modifier
+                    .padding(10.dp),
+                onClick = {
+                    cameraX.turnOnOffFlash()
+                }
+            ) {
+                Text(if (flashOn.value) "Turn OFF" else "Turn ON")
+            }
+            Button(
+                modifier = Modifier
+                    .padding(10.dp),
+                onClick = {
+                    cameraX.flipCameraFacing()
+                }
+            ) {
+                Text(if (facing.value == CameraSelector.LENS_FACING_FRONT) "back" else "front")
+            }
+
+            Button(
+                modifier = Modifier
+                    .padding(10.dp),
+                onClick = {
+                    cameraX.takePicture(showSnackBar)
+                }
+            ) {
+                Text("takePicture")
+            }
         }
 
-        Button(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(10.dp),
-            onClick = {
-                cameraX.takePicture(showSnackBar)
-            }
-        ) {
-            Text("takePicture")
-        }
     }
 }
 
@@ -156,15 +193,19 @@ private fun RequestPermission(
     setState: (CameraState) -> Unit
 ) {
     val context = LocalContext.current
-    val launcher =
+    val audioLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
                 setState(CameraState.Success)
             }
         }
+    val cameraLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { granted ->
+            audioLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
         LaunchedEffect(Unit) {
-            launcher.launch(Manifest.permission.CAMERA)
+            cameraLauncher.launch(Manifest.permission.CAMERA)
         }
     } else {
         setState(CameraState.Success)

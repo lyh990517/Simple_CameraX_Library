@@ -2,6 +2,7 @@ package com.example.compose_camerax
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
@@ -9,6 +10,7 @@ import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -46,6 +48,7 @@ class CameraXImpl : CameraX {
     private val _flash = MutableStateFlow(false)
     private val _recordingState = MutableStateFlow<RecordingState>(RecordingState.Idle)
     private val _recordingInfo = MutableSharedFlow<RecordingInfo>()
+    private val _bitmapFlow = MutableSharedFlow<Bitmap>()
 
     private lateinit var previewView: PreviewView
     private lateinit var preview: Preview
@@ -57,6 +60,7 @@ class CameraXImpl : CameraX {
     private lateinit var recording: Recording
     private lateinit var mediaStoreOutput: MediaStoreOutputOptions
 
+    private lateinit var imageAnalysis: ImageAnalysis
     private lateinit var imageCapture : ImageCapture
     private lateinit var videoCapture: VideoCapture<Recorder>
     override fun initialize(context: Context) {
@@ -68,9 +72,24 @@ class CameraXImpl : CameraX {
         executor = Executors.newSingleThreadExecutor()
         this.context = context
         initializeVideo()
+        initializeAnalyzer()
 
     }
 
+    private fun initializeAnalyzer(){
+        imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+
+        imageAnalysis.setAnalyzer(executor) { imageProxy ->
+            CoroutineScope(Dispatchers.Default).launch {
+                val bitmap = imageProxy.toBitmap()
+                val rotate = BitmapUtil.rotateBitmap(bitmap,90f)
+                _bitmapFlow.emit(rotate!!)
+                imageProxy.close()
+            }
+        }
+    }
     @OptIn(ExperimentalCamera2Interop::class)
     fun initializeVideo(){
         val qualitySelector = QualitySelector.fromOrderedList(
@@ -111,7 +130,8 @@ class CameraXImpl : CameraX {
                     cameraSelector,
                     preview,
                     imageCapture,
-                    videoCapture
+                    videoCapture,
+                    imageAnalysis
                 )
             }
         },executor)
@@ -214,5 +234,5 @@ class CameraXImpl : CameraX {
     override fun getFacingState(): StateFlow<Int> = _facing.asStateFlow()
     override fun getRecordingState(): StateFlow<RecordingState> = _recordingState.asStateFlow()
     override fun getRecordingInfo(): SharedFlow<RecordingInfo> = _recordingInfo.asSharedFlow()
-
+    override fun getImageBitmaps(): SharedFlow<Bitmap> = _bitmapFlow.asSharedFlow()
 }

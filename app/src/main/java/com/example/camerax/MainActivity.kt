@@ -4,18 +4,21 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -41,7 +44,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontStyle
@@ -107,15 +113,16 @@ fun FlashControlApp(
 
 @Composable
 private fun CameraScreen(showSnackBar: (String) -> Unit) {
-    val flashOn = remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraScope = rememberCoroutineScope()
     val context = LocalContext.current
     val cameraX by remember { mutableStateOf<CameraX>(CameraXImpl()) }
     val previewView = remember { mutableStateOf<PreviewView?>(null) }
     val facing = cameraX.getFacingState().collectAsState()
+    val flashOn = cameraX.getFlashState().collectAsState()
     val recordingState = cameraX.getRecordingState().collectAsState()
     val recordingInfo = cameraX.getRecordingInfo().collectAsState(RecordingInfo(0,0,0.0))
+    val imageBitmap = cameraX.getImageBitmaps().collectAsState(initial = null)
     LaunchedEffect(Unit) {
         cameraX.initialize(context = context)
         previewView.value = cameraX.getPreviewView()
@@ -128,8 +135,13 @@ private fun CameraScreen(showSnackBar: (String) -> Unit) {
             cameraX.unBindCamera()
         }
     }
+
     Box(Modifier.fillMaxSize()) {
         previewView.value?.let { preview -> AndroidView(modifier = Modifier.fillMaxSize(), factory = { preview }) {} }
+        imageBitmap.value?.let {
+            Image(modifier = Modifier.size(width = 120.dp, height = 160.dp).padding(10.dp).align(Alignment.TopEnd)// 이미지를 부모 요소의 크기에 맞게 확장
+                .aspectRatio(480f / 640f), bitmap = it.asImageBitmap(), contentDescription = "")
+        }
         Row(
             Modifier
                 .height(100.dp)
@@ -140,21 +152,31 @@ private fun CameraScreen(showSnackBar: (String) -> Unit) {
             Column(
                 Modifier
                     .fillMaxHeight()
-                    .weight(1f)) {
-                Text("${(recordingInfo.value.duration / 1000000000.0) } second", fontSize = 18.sp, color = Color.White)
-                Text("${recordingInfo.value.sizeByte / 1000000.0} Mbyte", fontSize = 18.sp, color = Color.White)
-            }
-            Row(
-                Modifier
-                    .weight(2f)
-                    .fillMaxHeight(),
-                verticalAlignment = Alignment.Bottom) {
-                repeat(25){
-                    Box(modifier = Modifier.size(4.dp,(recordingInfo.value.audioAmplitude * it * 4).dp).background(Color.Black))
+                    .weight(1f)
+            ) {
+                Text(
+                    "${(recordingInfo.value.duration / 1000000000.0)} second",
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+                Text(
+                    "${recordingInfo.value.sizeByte / 1000000.0} Mbyte",
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp, (recordingInfo.value.audioAmplitude * 100).dp)
+                            .background(Color.Black)
+                    )
                 }
-                repeat(25){
-                    Box(modifier = Modifier.size(4.dp,((recordingInfo.value.audioAmplitude * (100 - it * 4))).dp).background(Color.Black))
-                }
+
             }
         }
         Column(Modifier.align(Alignment.BottomCenter)) {

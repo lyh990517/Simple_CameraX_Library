@@ -1,6 +1,7 @@
 package com.example.compose_camerax
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.flow.SharedFlow
@@ -24,5 +25,6 @@ interface CameraX {
     fun getFacingState() : StateFlow<Int>
     fun getRecordingState() : StateFlow<RecordingState>
     fun getRecordingInfo() : SharedFlow<RecordingInfo>
+    fun getImageBitmaps() : SharedFlow<Bitmap>
 
 }

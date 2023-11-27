@@ -10,6 +10,7 @@ import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalLensFacing
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -42,6 +43,7 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+@ExperimentalLensFacing
 class CameraXImpl : CameraX {
 
     private val _facing = MutableStateFlow(CameraSelector.LENS_FACING_BACK)
@@ -214,7 +216,7 @@ class CameraXImpl : CameraX {
     override fun flipCameraFacing() {
         if (_facing.value == CameraSelector.LENS_FACING_BACK) {
             _flash.value = false
-            _facing.value = CameraSelector.LENS_FACING_FRONT
+            _facing.value = CameraSelector.LENS_FACING_EXTERNAL
         } else {
             _facing.value = CameraSelector.LENS_FACING_BACK
         }

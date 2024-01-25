@@ -40,7 +40,7 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class CameraXImpl : CameraX {
+internal class CameraXImpl : CameraX {
 
     private val _facing = MutableStateFlow(CameraSelector.LENS_FACING_BACK)
     private val _flash = MutableStateFlow(false)

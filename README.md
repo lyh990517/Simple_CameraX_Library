@@ -1,5 +1,6 @@
 # Android_CameraX_Sample
 <img src="https://github.com/lyh990517/Android_CameraX_Sample/assets/45873564/a96f2ccb-1583-40b2-b17f-a5b90ba0b5cd" width="400" height="800">
+
 ## Overview
 
 This Module has been designed to simplify the usage of CameraX, making it extremely easy for users to work with. By providing minimal initialization on the user's part, this module facilitates straightforward integration of CameraX functionality into Android applications.

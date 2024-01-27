@@ -6,6 +6,46 @@ This Module has been designed to simplify the usage of CameraX, making it extrem
 
 With this interface, users can effortlessly manage various camera-related tasks with minimal setup, ensuring a seamless and hassle-free experience.
 
+## Quick Start
+[![](https://jitpack.io/v/lyh990517/Simple_CameraX_Library.svg)](https://jitpack.io/#lyh990517/Simple_CameraX_Library)
+<br>
+
+If you're using **Groovy DSL**, 
+
+```gradle
+//settings.gradle
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+        repositories {
+            mavenCentral()
+            maven { url 'https://jitpack.io' }
+        }
+}
+//app.gradle
+dependencies {
+    implementation 'com.github.lyh990517:Simple_CameraX_Library:latest-release'
+}
+```
+
+<br>
+
+If you're using **Kotlin DSL**
+```kotlin
+//settings.gradle.kts
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+        repositories {
+            google()
+            mavenCentral()
+            maven(url = "https://jitpack.io")
+        }
+}
+//app.gradle.kts
+dependencies {
+    implementation ("com.github.lyh990517:Simple_CameraX_Library:latest-release")
+}
+```
+
 ## Methods
 
 1. `initialize(context: Context)`: Initializes the CameraX module with the given application context.

@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    `maven-publish`
 }
 
 android {
@@ -47,4 +48,22 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.0-alpha02")
     // CameraX View class
     implementation ("androidx.camera:camera-view:1.4.0-alpha02")
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            register<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "com.github.lyh990517"
+                artifactId = "Simple_CameraX_Library"
+                version = "1.0.0"
+
+                pom {
+                    name.set("cameraX")
+                    description.set("This is an easy-to-use modularized example of the CameraX library with Jetpack Compose.")
+                }
+            }
+        }
+    }
 }

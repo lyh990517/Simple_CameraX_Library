@@ -57,7 +57,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.lyh990517"
                 artifactId = "Simple_CameraX_Library"
-                version = "1.0.1"
+                version = "1.0.2"
 
                 pom {
                     name.set("cameraX")
